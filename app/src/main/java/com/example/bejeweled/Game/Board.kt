@@ -1,101 +1,155 @@
+package com.example.bejeweled.Game
+import androidx.compose.ui.graphics.Color
 
-enum class JewelType {
-    Red(0)
-    Yellow(1)
-    Green(2)
-    Blue(3)
-
-    companion object {
-        fun fromInt(value: Int): Types = Types.values().firts {
-            it.value = value
-        }
-    }
+enum class JewelColor {
+    Red,
+    Yellow,
+    Green,
+    Blue
 }
 
-class Position(y; Int, x: Int)
+data class Position(val x: Int, val y: Int)
 
-class Pairing(var jewelPositions: List<Position> = listOf())
+data class Block(val positions: List<Position>, val color: JewelColor) {
+    fun isValid() = positions.size > 3
+}
 
 class Board {
-    var gameBoard: List<List<JewelType>> = listOf(
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-        listOf(null,null,null,null,null,null,null,null,null,null)
-    )
-
-    fun swap(pos1: Position, pos2: Position) {
-        JewelType aux = gameBoard[pos1.y][pos1.x]
-        gameBoard[pos1.y][pos1.x] = gameBoard[pos2.y][pos1.x]
-        gameBoard[pos2.y][pos2.x] = aux
+    // Use a 2D array of nullable Colors
+    private val array : Array<Array<JewelColor?>> = Array(9) { row ->
+        arrayOfNulls<JewelColor>(9)
     }
 
-    fun resetBoard() {
-        for (y in 0..10)
-        for (x in 0..10) {
-            val jewelType = (0..4).random()
-            gameBoard[y][x] = JewelType.fromInt(jewelType)
-        }
+    // Example method to initialize some cells
+    constructor() {
+        initBoard()
     }
 
-    fun getPairings() {
-        var boardCopy = gameBoard
-        fun dfs(y: Int, x: Int,JewelType type) {
-            var res: List<JewelType> = listOf()
-            if (boardCopy[y][x] == type) {
-                boardCopy[y][x] == null
-                res.add(Position(y,x))
-                res.addall(dfs(y+1,x))
-                res.addall(dfs(y-1,x))
-                res.addall(dfs(y,x+1))
-                res.addall(dfs(y,x-1))
-            }
-            return res
+    fun setCell(row:Int,col:Int,color:JewelColor?) {
+        array[row][col] = color
+    }
+
+    fun getState(): Array<Array<JewelColor?>> {
+        return array
+    }
+
+    private fun detectBlocks(): Array<Block> {
+        val rows = array.size
+        val cols = array[0].size
+        val visited = Array(rows) { BooleanArray(cols) }
+
+        val directions = arrayOf(
+            Position(-1, 0), // Up
+            Position(1, 0),  // Down
+            Position(0, -1), // Left
+            Position(0, 1)   // Right
+        )
+
+        fun isValidPosition(p: Position): Boolean {
+            return p.x in 0 until rows && p.y in 0 until cols
         }
 
-        var result: List<Pairing>
-        for(y in 0..10)
-        for(x in 0..10) {
-            if (boardCopy[y][x] == null)
-                continue
-            else {
-                var pairingPositions = dfs(y,x,boardCopy[y][x])
-                if (pairingPositions.length >= 3) {
-                    result.add(Pairing(pairingPositions))
+        fun dfs(start: Position, color: JewelColor): List<Position> {
+            val stack = mutableListOf(start)
+            val blockPositions = mutableListOf<Position>()
+            visited[start.x][start.y] = true
+
+            while (stack.isNotEmpty()) {
+                val position = stack.removeAt(stack.size - 1)
+                blockPositions.add(position)
+
+                for (dir in directions) {
+                    val newPos = Position(position.x + dir.x, position.y + dir.y)
+                    if (isValidPosition(newPos) && !visited[newPos.x][newPos.y] && array[newPos.x][newPos.y] == color) {
+                        visited[newPos.x][newPos.y] = true
+                        stack.add(newPos)
+                    }
                 }
             }
+            return blockPositions
         }
-    }
 
-    fun DeletePairing(pairing: Pairing) {
-        for (pos in pairing.jewelPositions) {
-            gameBoard[pos.y,pos.x] = null;
-        }
-    }
+        val blocks = mutableListOf<Block>()
 
-    fun Fall() {
-        for (i in 0..10) {
-            pos = Position(1,i)
-            while(pos.y < 10) {
-                if (gameBoard[pos.y][pos.x] == null) {
-                    pos.y++
-                }
-                else if (pos.y > 0) {
-                    if (gameBoard[pos.y-1][pos.x] == null)
-                        swap(pos,Position(pos.y-1,pos.x))
-                        pos.y--
-                    else {
-                        pos.y++
+        for (i in 0 until rows) {
+            for (j in 0 until cols) {
+                if (!visited[i][j]) {
+                    val color = array[i][j] ?: continue
+                    val blockPositions = dfs(Position(i, j), color)
+                    if (blockPositions.size > 3) {
+                        blocks.add(Block(blockPositions, color))
                     }
                 }
             }
         }
+
+        return blocks.toTypedArray()
     }
 
+    private fun initBoard() {
+        while (true) {
+            val found = FillBoard()
+            if (!found)
+                break
+            val blocks = detectBlocks()
+            for (block in blocks) {
+                DeleteBlock(block)
+            }
+        }
+    }
+
+    private fun FillBoard(): Boolean {
+        val colors = JewelColor.values()
+        var found = false
+        for (row in 0 until 9) {
+            for (col in 0 until 9) {
+                if (array[row][col] == null) {
+                    found = true
+                    array[row][col] = colors.random()
+                }
+            }
+        }
+        return found
+    }
+
+    private fun DeleteBlock(block:Block) {
+        for (pos in block.positions) {
+            array[pos.x][pos.y] = null
+        }
+    }
+
+    fun CheckMove() {
+        MakeBlocksFall()
+        FillBoard()
+        while (true) {
+            val detectedBlocks = detectBlocks()
+            if (detectedBlocks.isEmpty())
+                return
+            for (block in detectedBlocks) {
+                DeleteBlock(block)
+            }
+            MakeBlocksFall()
+            FillBoard()
+        }
+    }
+
+    private fun MakeBlocksFall() {
+        val numRows = array.size
+        val numCols = array[0].size
+
+        for (col in 0 until numCols) {
+            // Temporary list to store non-null elements
+            val column = mutableListOf<JewelColor>()
+
+            // Collect all non-null elements from this column
+            for (row in (numRows - 1) downTo 0) {
+                array[row][col]?.let { column.add(it) }
+            }
+
+            // Fill the column with null values from the top
+            for (row in (numRows - 1) downTo 0) {
+                array[row][col] = if ((numRows - 1 - row) < column.size) column[(numRows - 1 - row)] else null
+            }
+        }
+    }
 }
