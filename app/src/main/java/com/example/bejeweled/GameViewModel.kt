@@ -51,11 +51,6 @@ class GameViewModel : ViewModel() {
         _pointLiveData.value = board.points
         _movesLiveData.value = board.moves
         _highScoreLiveData.value = 0
-        board.setCell(0,0,JewelColor.ColorCube)
-        board.setCell(0,5,JewelColor.ColorCube)
-        board.setCell(0,1,JewelColor.FireryRed)
-        board.setCell(0,6,JewelColor.FireryRed)
-
     }
 
     fun saveHighScore(context: Context) {
@@ -83,13 +78,15 @@ class GameViewModel : ViewModel() {
             if (pos1.isOrthogonallyAdjacent(pos)) {
                 pos2 = pos
                 viewModelScope.launch {
+                    val po = board.points
                     if (board.getCell(pos1.x,pos1.y) == JewelColor.ColorCube) {
                         animationState = AnimationState.BREAKING
                         val color = board.getCell(pos2.x,pos2.y)
-                        breakingGems = board.getColorBombBreakingGems(color!!.getGroup(),pos1)
+                        breakingGems = board.activateSpecialGem(pos1, multiplier = 1f,color!!.getGroup())
                         delay(500)
-                        board.setCell(pos1.x,pos1.y,null)
-                        board.Destroy(color!!.getGroup())
+                        for (pos in breakingGems) {
+                            board.setCell(pos.x,pos.y,null)
+                        }
                         board.MakeBlocksFall()
                         delay(300) // Give some time for the falling animation
                         board.FillBoard()
@@ -100,10 +97,11 @@ class GameViewModel : ViewModel() {
                     else if (board.getCell(pos2.x,pos2.y) == JewelColor.ColorCube) {
                         animationState = AnimationState.BREAKING
                         val color = board.getCell(pos1.x,pos1.y)
-                        breakingGems = board.getColorBombBreakingGems(color!!.getGroup(),pos2)
+                        breakingGems = board.activateSpecialGem(pos2, multiplier = 1f,color!!.getGroup())
                         delay(500)
-                        board.setCell(pos2.x,pos2.y,null)
-                        board.Destroy(color!!.getGroup())
+                        for (pos in breakingGems) {
+                            board.setCell(pos.x,pos.y,null)
+                        }
                         board.MakeBlocksFall()
                         delay(300) // Give some time for the falling animation
                         board.FillBoard()
@@ -119,12 +117,13 @@ class GameViewModel : ViewModel() {
                     animationState = AnimationState.IDLE
                     delay(1)
                         }
-                    board.moves++
                     checkForBreaks()
                     animationState = AnimationState.IDLE
                     pos1 = Position(-1, -1)
                     pos2 = Position(-1, -1)
                     updateLiveData()
+                    println(board.points-po)
+
                 }
             } else {
                 pos1 = Position(-1, -1)
@@ -138,15 +137,15 @@ class GameViewModel : ViewModel() {
         while (true) {
             val blocks = board.detectBlocks()
             if (blocks.isNotEmpty()) {
-                breakingGems = board.getAllBreakingGems(blocks)
-                println("animated $breakingGems.size")
+                val destroyedPositions = mutableListOf<Position>()
+                for (block in blocks)
+                    for (pos in block.positions) {
+                        destroyedPositions.addAll(board.activateSpecialGem(pos))
+                    }
+                breakingGems = destroyedPositions
                 animationState = AnimationState.BREAKING
                 delay(500) // Breaking animation duration
-                for (block in blocks) {
-                    board.BlockPoints(block)
-                    board.ActivateBlock(block)
-                    board.comboMultiplier += 0.1f
-                }
+                board.ActivateBlock(blocks)
                 board.MakeBlocksFall()
                 delay(300) // Give some time for the falling animation
                 board.FillBoard()
@@ -159,6 +158,8 @@ class GameViewModel : ViewModel() {
             }
         }
         animationState = AnimationState.IDLE
+        board.moves++
+        updateLiveData()
     }
 
     private fun updateLiveData() {

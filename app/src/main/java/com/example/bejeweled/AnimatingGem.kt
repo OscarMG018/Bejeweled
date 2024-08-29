@@ -2,6 +2,7 @@ package com.example.bejeweled
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,8 +85,13 @@ fun AnimatedGem(
         }
     }
 
+    val borderColor =  if ((position == pos1 || position == pos2) && animationState == AnimationState.IDLE) Color.White else Color.Transparent
+    val borderWidth =  if ((position == pos1 || position == pos2) && animationState == AnimationState.IDLE) 4 else 0
+
+
     Box(
         modifier = Modifier
+            .border(borderWidth.dp,borderColor)
             .offset(offsetX.value.dp, offsetY.value.dp)
             .scale(scale.value)
             .alpha(alpha.value)

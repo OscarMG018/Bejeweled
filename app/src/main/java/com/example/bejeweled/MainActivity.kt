@@ -187,6 +187,10 @@ fun getColorsForDisplay(color: JewelColor?): List<Color> {
         JewelColor.FireryGreen -> listOf(Color.hsl(95f,1f,0.3f),Color.Green,Color.hsl(95f,1f,0.3f))
         JewelColor.FireryBlue -> listOf(Color.Cyan,Color.Blue,Color.Cyan)
         JewelColor.ColorCube -> listOf(Color.Black,Color.White)
+        JewelColor.FlashRed -> listOf(Color.Black,Color.Red)
+        JewelColor.FlashGreen -> listOf(Color.Black,Color.Green)
+        JewelColor.FlashYellow -> listOf(Color.Black,Color.Yellow)
+        JewelColor.FlashBlue -> listOf(Color.Black,Color.Blue)
         else ->listOf(Color.Black,Color.Black)
     }
 }

@@ -11,44 +11,48 @@ enum class JewelColor {
     FireryYellow,
     FireryGreen,
     FireryBlue,
+    FlashRed,
+    FlashYellow,
+    FlashGreen,
+    FlashBlue,
     ColorCube;
 
     fun getGroup(): ColorGroup {
         return when (this) {
-            Red, FireryRed -> ColorGroup.Red
-            Yellow, FireryYellow -> ColorGroup.Yellow
-            Green, FireryGreen -> ColorGroup.Green
-            Blue, FireryBlue -> ColorGroup.Blue
+            Red, FireryRed, FlashRed -> ColorGroup.Red
+            Yellow, FireryYellow, FlashYellow -> ColorGroup.Yellow
+            Green, FireryGreen, FlashGreen -> ColorGroup.Green
+            Blue, FireryBlue, FlashBlue -> ColorGroup.Blue
             ColorCube -> ColorGroup.ColorCube
         }
     }
 
     fun getFireryVersion(): JewelColor {
         return when(this) {
-            Red -> FireryRed
-            Yellow -> FireryYellow
-            Green -> FireryGreen
-            Blue -> FireryBlue
-            FireryRed -> FireryRed
-            FireryYellow -> FireryYellow
-            FireryGreen -> FireryGreen
-            FireryBlue -> FireryBlue
+            Red, FireryRed, FlashRed -> FireryRed
+            Yellow, FireryYellow, FlashYellow -> FireryYellow
+            Green, FireryGreen, FlashGreen -> FireryGreen
+            Blue, FireryBlue, FlashBlue -> FireryBlue
+            ColorCube -> ColorCube
+        }
+    }
+
+    fun getFlashVersion(): JewelColor {
+        return when(this) {
+            Red, FireryRed, FlashRed -> FlashRed
+            Yellow, FireryYellow, FlashYellow -> FlashYellow
+            Green, FireryGreen, FlashGreen -> FlashGreen
+            Blue, FireryBlue, FlashBlue -> FlashBlue
             ColorCube -> ColorCube
         }
     }
 
     fun isFirery(): Boolean {
-        return when(this) {
-            Red -> false
-            Yellow -> false
-            Green -> false
-            Blue -> false
-            FireryRed -> true
-            FireryYellow -> true
-            FireryGreen -> true
-            FireryBlue -> true
-            ColorCube -> false
-        }
+        return this in listOf(FireryRed, FireryYellow, FireryGreen, FireryBlue)
+    }
+
+    fun isFlash(): Boolean {
+        return this in listOf(FlashRed, FlashYellow, FlashGreen, FlashBlue)
     }
 }
 
@@ -219,87 +223,9 @@ class Board {
         }
     }
 
-    fun Explode(center: Position,multiplier:Float=1f) {
-        points += (multiplier*500*comboMultiplier).roundToInt()
-        val explosionColor = array[center.x][center.y]
-        array[center.x][center.y] = null
-        for (dx in -1..1) {
-            for (dy in -1..1) {
-                val x = center.x + dx
-                val y = center.y + dy
-                if (x in array.indices && y in array[0].indices) {
-                    if (array[x][y] != null && array[x][y]!!.isFirery()) {
-                        Explode(Position(x, y),multiplier=multiplier*1.5f)
-                    }
-                    if (array[x][y] != null && array[x][y]!!.getGroup() == ColorGroup.ColorCube) {
-                        array[x][y] = null
-                        Destroy(explosionColor!!.getGroup(),multiplier=multiplier*1.5f)
-                    }
-                    array[x][y] = null
-                }
-            }
-        }
-    }
-
-    fun Destroy(color:ColorGroup,multiplier:Float= 1f) {
-        for (x in array.indices) {
-            for (y in array[x].indices) {
-                if (array[x][y]?.getGroup() == color || color == ColorGroup.ColorCube) {
-                    points += (650*comboMultiplier*multiplier).roundToInt()
-                    if (array[x][y] != null && array[x][y]!!.isFirery()) {
-                        Explode(Position(x, y),multiplier=multiplier*1.5f)
-                    }
-                    array[x][y] = null  // Or appropriate logic to clear the jewel
-                }
-            }
-        }
-    }
-
     fun DeleteBlock(block:Block) {
         for (positon in block.positions) {
             array[positon.x][positon.y] = null
-        }
-    }
-
-    fun ActivateBlock(block:Block) {
-        if (block.positions.size == 4) {
-            var specialPosition: Position = Position(-1, -1)
-            if (block.positions.contains(Lastpos1))
-                specialPosition = Lastpos1
-            else if (block.positions.contains((Lastpos2)))
-                specialPosition = Lastpos2
-            else
-                specialPosition = block.center()!!
-            val specialColor = block.color.getFireryVersion()
-            for (i in  0 until block.positions.size) {
-                if (array[block.positions[i].x][block.positions[i].y] != null && array[block.positions[i].x][block.positions[i].y]!!.isFirery())
-                    Explode(block.positions[i])
-                array[block.positions[i].x][block.positions[i].y] = null
-            }
-            array[specialPosition.x][specialPosition.y] = specialColor
-            return
-        }
-        if (block.positions.size >= 5) {
-            var specialPosition: Position = Position(-1, -1)
-            if (block.positions.contains(Lastpos1))
-                specialPosition = Lastpos1
-            else if (block.positions.contains((Lastpos2)))
-                specialPosition = Lastpos2
-            else
-                specialPosition = block.center()!!
-            val specialColor = JewelColor.ColorCube
-            for (i in  0 until block.positions.size) {
-                if (array[block.positions[i].x][block.positions[i].y] != null && array[block.positions[i].x][block.positions[i].y]!!.isFirery())
-                    Explode(block.positions[i])
-                array[block.positions[i].x][block.positions[i].y] = null
-            }
-            array[specialPosition.x][specialPosition.y] = specialColor
-            return
-        }
-        for (i in  0 until block.positions.size) {
-            if (array[block.positions[i].x][block.positions[i].y] != null && array[block.positions[i].x][block.positions[i].y]!!.isFirery())
-                Explode(block.positions[i])
-            array[block.positions[i].x][block.positions[i].y] = null
         }
     }
 
@@ -311,10 +237,8 @@ class Board {
             points += (120*comboMultiplier).roundToInt()
         }
         else {
-            points += (200*comboMultiplier).roundToInt()
+            points += (200*(block.positions.size-4)*comboMultiplier).roundToInt()
         }
-
-        println(points)
     }
 
     fun MakeBlocksFall() {
@@ -337,78 +261,140 @@ class Board {
         }
     }
 
-    fun getAllBreakingGems(blocks: List<Block>): List<Position> {
-        val result = mutableListOf<Position>()
-        for (block in blocks) {
-            result.addAll(block.positions)
-            for (pos in block.positions) {
-                if (array[pos.x][pos.y]!!.isFirery()) {
-                    val explodingGems = getExplodingBreakingGems(pos,)
-                    println("Explode $explodingGems")
-                    for (explodingGem in explodingGems) {
-                        if (!result.contains(explodingGem)) {
-                            result.add(explodingGem)
-                        }
-                    }
+    fun activateSpecialGem(position: Position, multiplier: Float = 1f, color: ColorGroup = ColorGroup.Red, destroyedPositions: MutableList<Position> = mutableListOf<Position>()) : List<Position> {
+        destroyedPositions.add(position)
+        when {
+            array[position.x][position.y]!!.isFirery() -> ActivateFireryGem(position,multiplier * 1.5f,destroyedPositions)
+            array[position.x][position.y]!!.isFlash() -> ActivateFlashGem(position,multiplier * 1.5f,destroyedPositions)
+            array[position.x][position.y]!!.getGroup() == ColorGroup.ColorCube ->
+                ActivateColorCube(color,multiplier * 1.5f,destroyedPositions)
+        }
+        return destroyedPositions
+    }
+
+    fun ActivateFlashGem(position: Position, multiplier: Float = 1f,destroyedPositions: MutableList<Position> = mutableListOf<Position>()): List<Position> {
+        val color = array[position.x][position.y]?.getGroup() ?: return destroyedPositions
+
+        // Destroy row
+        for (y in 0 until 9) {
+            for (dx in -1..1) {
+                if (position.x+dx in array.indices && y in array[0].indices) {
+                    val pos = Position(position.x + dx, y)
+                    points += (1000 * comboMultiplier * multiplier).roundToInt()
+                    if (!destroyedPositions.contains(pos))
+                        activateSpecialGem(pos, multiplier, color, destroyedPositions)
                 }
             }
         }
-        println("funtion $result")
-        return result
-    }
 
-    fun getExplodingBreakingGems(center: Position, visited: MutableSet<Position> = mutableSetOf<Position>()): List<Position> {
-        val result = mutableListOf<Position>()
-        val explosionColor = array[center.x][center.y]
-
-        if (center in visited || !array[center.x][center.y]!!.isFirery()) {
-            return result
+        // Destroy column
+        for (x in 0 until 9) {
+            for (dy in -1..1) {
+                if (x in array.indices && position.y + dy in array[0].indices) {
+                    val pos = Position(x,  position.y + dy)
+                    points += (1000 * comboMultiplier * multiplier).roundToInt()//52650,20150
+                    if (!destroyedPositions.contains(pos))
+                        activateSpecialGem(pos, multiplier, color, destroyedPositions)
+                }
+            }
         }
 
-        result.add(center)
-        visited.add(center)
+        points += (1000 * comboMultiplier * multiplier).roundToInt()
+        return destroyedPositions
+    }
 
+    fun ActivateFireryGem(center: Position, multiplier: Float = 1f,destroyedPositions: MutableList<Position> = mutableListOf<Position>()): List<Position> {
+        points += (multiplier * 500 * comboMultiplier).roundToInt()
+        val explosionColor = array[center.x][center.y]
         for (dx in -1..1) {
             for (dy in -1..1) {
-                if (dx == 0 && dy == 0) continue // Skip the center position itself
                 val x = center.x + dx
                 val y = center.y + dy
                 if (x in array.indices && y in array[0].indices) {
-                    val position = Position(x, y)
-                    if (!visited.contains(position)) {
-                        if (array[x][y]!!.isFirery())
-                            result.addAll(getExplodingBreakingGems(position, visited))
-                        if (array[x][y]!!.getGroup() == ColorGroup.ColorCube)
-                            result.addAll(getColorBombBreakingGems(explosionColor!!.getGroup(), position, visited))
-                        else
-                            result.add(position)
+                    val pos = Position(x, y)
+                    points += (25 * comboMultiplier * multiplier).roundToInt()
+                    if (!destroyedPositions.contains(pos)) {
+                        activateSpecialGem(
+                            pos,
+                            multiplier,
+                            explosionColor!!.getGroup(),
+                            destroyedPositions
+                        )
                     }
                 }
             }
         }
-
-        return result
+        return destroyedPositions
     }
 
-    fun getColorBombBreakingGems(color: ColorGroup, source: Position, visited: MutableSet<Position> = mutableSetOf<Position>()): List<Position> {
-        val result = mutableListOf<Position>()
-        result.add(source)
-        visited.add(source)
+    fun ActivateColorCube(color: ColorGroup, multiplier: Float = 1f,destroyedPositions: MutableList<Position> = mutableListOf<Position>()): List<Position> {
         for (x in array.indices) {
             for (y in array[x].indices) {
                 if (array[x][y]?.getGroup() == color || color == ColorGroup.ColorCube) {
-                    val position = Position(x,y)
-                    if (array[x][y]!!.isFirery() && !visited.contains(position)) {
-                        val explodingGems = getExplodingBreakingGems(position, visited)
-                        result.addAll(explodingGems)
-                    }
-                    if (!visited.contains(position)) {
-                        result.add(position)
-                        visited.add(position)
-                    }
+                    val pos = Position(x, y)
+                    points += (1000 * comboMultiplier * multiplier).roundToInt()//52650,20150
+                    if (!destroyedPositions.contains(pos))
+                        activateSpecialGem(pos, multiplier,color,destroyedPositions)
                 }
             }
         }
-        return result
+        return destroyedPositions
+    }
+
+    fun ActivateBlock(blocks: List<Block>) {
+        val destroyedPositions = mutableListOf<Position>()
+        val special = mutableMapOf<Position,JewelColor>()
+        for (block in blocks) {
+            BlockPoints(block)
+            when {
+                block.positions.size == 4 -> {
+                    val specialPosition = listOf(Lastpos1, Lastpos2).find { block.positions.contains(it) } ?: block.center()!!
+                    val specialColor = block.color.getFireryVersion()
+                    special[specialPosition] = specialColor
+                    for (pos in block.positions) {
+                        destroyedPositions.addAll(activateSpecialGem(pos))
+                    }
+                }
+
+                block.positions.size == 5 -> {
+                    val specialPosition = listOf(Lastpos1, Lastpos2).find { block.positions.contains(it) } ?: block.center()!!
+                    val specialColor = JewelColor.ColorCube
+                    special[specialPosition] = specialColor
+                    for (pos in block.positions) {
+                        destroyedPositions.addAll(activateSpecialGem(pos))
+                    }
+                }
+
+                block.positions.size > 5 -> {
+                    val specialPosition = listOf(Lastpos1, Lastpos2).find { block.positions.contains(it) } ?: block.center()!!
+                    val specialColor = block.color.getFlashVersion()
+                    special[specialPosition] = specialColor
+                    for (pos in block.positions) {
+                        destroyedPositions.addAll(activateSpecialGem(pos))
+                    }
+                }
+                else -> {
+                    var flash = true
+                    for (pos in block.positions) {
+                        if (!getCell(pos.x,pos.y)!!.isFirery())
+                            flash = false
+                        destroyedPositions.addAll(activateSpecialGem(pos))
+                    }
+                    if (flash) {
+                        val specialPosition = listOf(Lastpos1, Lastpos2).find { block.positions.contains(it) } ?: block.center()!!
+                        val specialColor = block.color.getFlashVersion()
+                        special[specialPosition] = specialColor
+                    }
+
+                }
+            }
+            comboMultiplier += 0.1f
+        }
+        for (pos in destroyedPositions) {
+            setCell(pos.x,pos.y,null)
+        }
+        for ((pos,color) in special) {
+            setCell(pos.x,pos.y,color)
+        }
     }
 }
