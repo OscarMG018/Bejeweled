@@ -1,12 +1,9 @@
 package com.example.bejeweled
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.view.inputmethod.InputBinding
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,108 +11,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.bejeweled.ui.theme.BejeweledTheme
-import com.example.bejeweled.Game.Board
 import com.example.bejeweled.Game.JewelColor
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.*
-
-import androidx.lifecycle.*
+import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
-import kotlinx.coroutines.flow.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.activity.viewModels
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.ui.text.style.TextAlign
-import com.example.bejeweled.Game.Position
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStreamReader
+import kotlinx.coroutines.*
+import com.example.bejeweled.Game.*
 
-class GameViewModel : ViewModel() {
-    // Create an instance of the Board
-    private val board: Board = Board()
-    var pos1: Position = Position(-1,-1)
-    var pos2: Position = Position(-1,-1)
-
-    private val _boardLiveData = MutableLiveData<Array<Array<JewelColor?>>>()
-    private val _pointLiveData = MutableLiveData<Int>()
-    private val _movesLiveData = MutableLiveData<Int>()
-    private val _highScoreLiveData = MutableLiveData<Int>()
-    val boardLiveData: LiveData<Array<Array<JewelColor?>>>
-        get() = _boardLiveData
-    val pointsLiveData: LiveData<Int>
-        get() = _pointLiveData
-    val movesLiveData: LiveData<Int>
-        get() = _movesLiveData
-    val highScoreLiveData: LiveData<Int>
-        get() = _highScoreLiveData
-
-    init {
-        _boardLiveData.value = board.getState()
-        _pointLiveData.value = board.points
-        _movesLiveData.value = board.moves
-        _highScoreLiveData.value = 0
-    }
-
-    fun saveHighScore(context: Context) {
-        val currentPoints = pointsLiveData.value ?: 0
-        val previousRecord = loadRecord(context)?.toIntOrNull() ?: 0
-
-        if (currentPoints > previousRecord) {
-            saveRecord(context, currentPoints.toString())
-        }
-    }
-
-    fun Reset() {
-        board.initBoard()
-        pos1 = Position(-1,-1)
-        pos2 = Position(-1,-1)
-        updateLiveData()
-    }
-
-    fun HandleClick(pos: Position) {
-        if (pos1.x == -1) {
-            pos1 = pos
-            updateLiveData()
-            println("Pos1 Set")
-        }
-        else {
-            if (pos1.isOrthogonallyAdjacent(pos)) {
-                pos2 = pos
-                println("Pos2 Set")
-                board.Swap(pos1,pos2)
-                board.CheckMove()
-                board.moves++
-            }
-            pos1 = Position(-1,-1)
-            println("Pos1 Reset")
-            pos2 = Position(-1,-1)
-            println("Pos2 Reset")
-
-            updateLiveData()
-        }
-    }
-
-    private fun updateLiveData() {
-        _boardLiveData.value = board.getState().copyOf()
-        _pointLiveData.value = board.points
-        _movesLiveData.value = board.moves
-        if ((_pointLiveData.value ?: 0) > (_highScoreLiveData.value ?: 0))
-            _highScoreLiveData.value = _pointLiveData.value
-    }
-
-    fun SetHighScore(value:Int) {
-        _highScoreLiveData.value = value
-    }
-}
 
 class MainActivity : ComponentActivity() {
 
@@ -225,13 +140,13 @@ fun HighScore(viewModel: GameViewModel) {
 }
 
 @Composable
-fun DisplayBoard(viewModel: GameViewModel,pad : PaddingValues) {
-
+fun DisplayBoard(viewModel: GameViewModel, pad: PaddingValues) {
     val boardState by viewModel.boardLiveData.observeAsState(emptyArray())
+    val animationState = viewModel.animationState
+    val breakingGems = viewModel.breakingGems
 
     Box(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -240,28 +155,19 @@ fun DisplayBoard(viewModel: GameViewModel,pad : PaddingValues) {
                 .background(Color.LightGray)
         ) {
             for (row in 0 until 9) {
-                Row(
-                    modifier = Modifier.wrapContentSize()
-                ) {
+                Row(modifier = Modifier.wrapContentSize()) {
                     for (col in 0 until 9) {
                         val color = boardState[row][col]
-                        val colors = getColorsForDisplay(color)
-                        val position = Position(row,col)
-                        val borderColor = if (position == viewModel.pos1) Color.White else Color.Gray
-                        val borderWidth = if (position == viewModel.pos1) 4 else 1
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    brush =
-                                    Brush.linearGradient(
-                                        colors = colors
-                                    )
-                                )
-                                .border(borderWidth.dp, borderColor)
-                                .clickable {
-                                    viewModel.HandleClick(Position(row, col))
-                                }
+                        val position = Position(row, col)
+
+                        AnimatedGem(
+                            position = position,
+                            color = color,
+                            animationState = animationState,
+                            pos1 = viewModel.pos1,
+                            pos2 = viewModel.pos2,
+                            breakingGems = breakingGems,
+                            onClick = { viewModel.HandleClick(position) }
                         )
                     }
                 }
